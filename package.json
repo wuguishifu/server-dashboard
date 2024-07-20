@@ -1,0 +1,6 @@
+{
+    "scripts": {
+        "start": "docker-compose up --build",
+        "dev": "cd backend && npm run dev"
+    }
+}
