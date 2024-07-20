@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import connect from 'connect-sqlite3';
+import cors from 'cors';
 import express from 'express';
 import session, { Store } from 'express-session';
 import http from 'http';
@@ -22,6 +23,13 @@ const server = http.createServer(app);
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json({ limit: '1mb' }));
 
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+}));
+
+app.use(express.static(path.resolve(__dirname, 'public')));
+
 app.use(session({
     store: new SQLiteStore({
         db: 'sessions.db',
@@ -36,19 +44,17 @@ app.use(session({
     },
 }));
 
-app.get('/ping', (_, res) => {
-    res.send({
-        message: 'pong',
-        time: new Date().toISOString(),
-    });
+app.use('/api', (req, _, next) => {
+    console.log(req.method, req.url, new Date().toLocaleString());
+    next();
 });
 
-app.use((req, _, next) => {
+app.use('/api', (req, _, next) => {
     req.db = db;
     next();
 });
 
-app.get('/users', async (req, res) => {
+app.get('/api/users', async (req, res) => {
     req.db.all('SELECT email FROM users', [], (error, rows) => {
         if (error) {
             console.error(error);
@@ -59,7 +65,7 @@ app.get('/users', async (req, res) => {
     });
 });
 
-app.post('/users', async (req, res) => {
+app.post('/api/users', async (req, res) => {
     const { email, password } = req.body;
 
     const salt = await bcrypt.genSalt(10);
@@ -67,7 +73,7 @@ app.post('/users', async (req, res) => {
 
     const stmt = req.db.prepare('INSERT INTO users (email, password) VALUES (?, ?)');
     stmt.run(
-        [email, hash],
+        [email.toLowerCase(), hash],
         (error) => {
             if (error) {
                 if (error.message.includes('UNIQUE constraint failed')) {
@@ -83,12 +89,12 @@ app.post('/users', async (req, res) => {
     stmt.finalize();
 });
 
-app.post('/login', async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
 
     req.db.get<{ email: string, password: string }>(
         'SELECT * FROM users WHERE email = ?',
-        [email],
+        [email.toLowerCase()],
         async (error, user) => {
             if (error) {
                 console.error(error);
@@ -101,25 +107,25 @@ app.post('/login', async (req, res) => {
             if (!valid) return res.status(400).send({ error: 'Invalid email or password' });
 
             req.session.user = { email: user.email };
-            res.status(200).send({ message: 'logged in' });
+            res.status(200).send({ message: 'logged in', user: req.session.user });
         },
     );
 });
 
-app.use((req, res, next) => {
+app.use('/api', (req, res, next) => {
     if (req.session.user) return next();
     res.status(401).send({ error: 'Unauthorized' });
 });
 
-app.get('/ping/protected', (req, res) => {
-    res.send({
-        message: 'pong',
-        time: new Date().toISOString(),
-        user: (req.session as any).user,
-    });
+app.get('/api/auth/session', (req, res) => {
+    if (req.session.user) {
+        res.status(200).send({ user: req.session.user });
+    } else {
+        res.status(401).send({ error: 'Unauthorized' });
+    }
 });
 
-app.post('/logout', (req, res) => {
+app.post('/api/auth/logout', (req, res) => {
     req.session.destroy(error => {
         if (error) {
             console.error(error);
@@ -127,7 +133,11 @@ app.post('/logout', (req, res) => {
         }
         res.status(200).send({ message: 'logged out' });
     });
-})
+});
+
+app.get('*', (_, res) => {
+    res.sendFile(path.resolve(__dirname, 'frontend', 'index.html'));
+});
 
 const port = 3000;
 server.listen(port, () => {
