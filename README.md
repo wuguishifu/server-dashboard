@@ -7,7 +7,7 @@ This project is for my homelab so I can better manage all of my apps!
 ### backend
 
 - [ ] add user credential file generator so you can add users at startup
-- [ ] change location of dbs to /data/* so they can be saved on the host file system (docker-compose)
+- [ ] change location of dbs to `/data/*` so they can be saved on the host file system (`docker-compose`)
 
 ### frontend
 
