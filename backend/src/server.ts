@@ -43,8 +43,13 @@ app.get('/ping', (_, res) => {
     });
 });
 
-app.get('/users', async (_, res) => {
-    db.all('SELECT email FROM users', [], (error, rows) => {
+app.use((req, _, next) => {
+    req.db = db;
+    next();
+});
+
+app.get('/users', async (req, res) => {
+    req.db.all('SELECT email FROM users', [], (error, rows) => {
         if (error) {
             console.error(error);
             res.status(500).send({ error: error.message });
@@ -60,7 +65,7 @@ app.post('/users', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
 
-    const stmt = db.prepare('INSERT INTO users (email, password) VALUES (?, ?)');
+    const stmt = req.db.prepare('INSERT INTO users (email, password) VALUES (?, ?)');
     stmt.run(
         [email, hash],
         (error) => {
@@ -81,7 +86,7 @@ app.post('/users', async (req, res) => {
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
-    db.get<{ email: string, password: string }>(
+    req.db.get<{ email: string, password: string }>(
         'SELECT * FROM users WHERE email = ?',
         [email],
         async (error, user) => {
