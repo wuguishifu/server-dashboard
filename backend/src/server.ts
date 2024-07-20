@@ -25,7 +25,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(session({
     store: new SQLiteStore({
         db: 'sessions.db',
-        dir: './sessions',
+        dir: '.',
     }) as Store,
     secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
