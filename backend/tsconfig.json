@@ -1,0 +1,29 @@
+{
+    "extends": "@tsconfig/node18/tsconfig.json",
+    "include": [
+        "src/**/*.ts",
+        "types/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ],
+    "compilerOptions": {
+        "outDir": "dist",
+        "lib": [
+            "ES6",
+            "DOM"
+        ],
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ]
+        },
+        "typeRoots": [
+            "./node_modules/@types",
+            "./types"
+        ]
+    }
+}
